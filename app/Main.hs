@@ -88,7 +88,6 @@ revealHidden (Game b@(Board _ _ g _) c m) (x, y) =
                 guessing $ Game b' c m
             Neighbors cnt -> do
                 let b' = revealCell x y b
-                putStrLn ("Cell: " ++ (show cnt))
                 guessing $ Game b' c m
 
 
