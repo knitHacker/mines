@@ -1,0 +1,77 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.36.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           mines
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/knitHacker/mines#readme>
+homepage:       https://github.com/knitHacker/mines#readme
+bug-reports:    https://github.com/knitHacker/mines/issues
+author:         Lianne Lairmore
+maintainer:     lianne.lairmore@gmail.com
+copyright:      Lianne Lairmore
+license:        BSD-3-Clause
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/knitHacker/mines
+
+library
+  exposed-modules:
+      Mines
+      Types
+  other-modules:
+      Paths_mines
+  autogen-modules:
+      Paths_mines
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , containers
+    , random
+  default-language: Haskell2010
+
+executable mines-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_mines
+  autogen-modules:
+      Paths_mines
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , containers
+    , mines
+    , random
+  default-language: Haskell2010
+
+test-suite mines-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_mines
+  autogen-modules:
+      Paths_mines
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , containers
+    , mines
+    , random
+  default-language: Haskell2010
