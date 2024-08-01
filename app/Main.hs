@@ -62,41 +62,19 @@ executeSelect game@(Game b@(Board (w, h) _ _ _) _ m) (x, y)
         let state = getCellState x y b
         case (state, m) of
             (Flag, RevealMode) -> continue game "Can't reveal flag in this mode"
-            (Flag, FlagMode) -> removeFlag game (x, y)
+            (Flag, FlagMode) -> doAction game $ RemoveFlag x y
             (Revealed, FlagMode) -> continue game "Already revealed"
-            (Revealed, RevealMode) -> tryExpand game (x, y)
-            (Hidden, RevealMode) -> revealHidden game (x, y)
-            (Hidden, FlagMode) -> addFlag game (x, y)
+            (Revealed, RevealMode) -> doAction game $ RevealNum x y
+            (Hidden, RevealMode) -> doAction game $ RevealHidden x y
+            (Hidden, FlagMode) -> doAction game $ PlaceFlag x y
 
-addFlag :: Game -> (Int, Int) -> IO ()
-addFlag (Game b c m) (x, y) = do
-    let b' = flagCell x y b
-    guessing $ Game b' c m
-
-removeFlag :: Game -> (Int, Int) -> IO ()
-removeFlag (Game b c m) (x, y) = do
-    let b' = hiddenCell x y b
-    guessing $ Game b' c m
-
-revealHidden :: Game -> (Int, Int) -> IO ()
-revealHidden (Game b@(Board _ _ g _) c m) (x, y) =
-        case getCell x y g of
-            Mine -> putStrLn "MINE!\nSorry you lose"
-            Neighbors Zero -> do
-                let b' = revealAllNearZeros (x, y) b
-                putStrLn "Reveal all 0 neighbors"
-                guessing $ Game b' c m
-            Neighbors cnt -> do
-                let b' = revealCell x y b
-                guessing $ Game b' c m
-
-
-tryExpand :: Game -> (Int, Int) -> IO ()
-tryExpand (Game b@(Board _ _ _ _) c m) pos =
-    case bM of
-        (Left b') -> guessing $ Game b' c m
-        (Right b') -> do
+doAction :: Game -> Move -> IO ()
+doAction g@(Game b c m) move = do
+    putStrLn msg
+    case bE of
+        Left b' -> guessing $ Game b' c m
+        Right b' -> do
             print b'
-            putStrLn "MINE! \nSorry you lose"
+            putStrLn "MINE!\nSorry you lose"
     where
-        bM = tryExpandComplete b pos
+        (msg, bE) = makeMove move b

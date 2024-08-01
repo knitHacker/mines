@@ -8,6 +8,7 @@ module Types
     , Board(..)
     , GameMode(..)
     , Game(..)
+    , Move(..)
     , isZero
     , isFlagged
     , isMine
@@ -17,8 +18,8 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
 import qualified Data.Array as A
-import Data.Array ((!))
-import qualified Data.List as L
+-- import Data.Array ((!))
+-- import qualified Data.List as L
 
 
 showNum :: Int -> String
@@ -68,6 +69,13 @@ instance Show ShowCell where
 
 type Row = A.Array Int Cell
 type Grid = A.Array Int Row
+
+
+data Move = PlaceFlag Int Int
+          | RemoveFlag Int Int
+          | RevealHidden Int Int
+          | RevealNum Int Int
+          deriving (Show, Eq)
 
 data Board = Board
     { boardSize :: (Int, Int)

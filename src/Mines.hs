@@ -8,7 +8,7 @@ module Mines
     , flagCount
     , generateBoard
     , checkWin
-    , tryExpandComplete
+    , makeMove
     ) where
 
 import System.Random
@@ -18,6 +18,8 @@ import qualified Data.Set as S
 import qualified Data.Array as A
 import Data.Array ((!))
 import qualified Data.List as L
+
+import Data.Maybe (catMaybes)
 
 import Debug.Trace
 
@@ -89,6 +91,20 @@ updateCell cs x y (Board s m g b) = (Board s m g (M.update updateRow y b))
         updateRow row = Just $ M.update updateCell' x row
         updateCell' (ShowCell c _) = Just (ShowCell c cs)
 
+mapShowBoard :: ((Int, Int) -> ShowCell -> a) -> Board -> [a]
+mapShowBoard f (Board _ _ _ b) = M.foldrWithKey rowMap [] b
+    where
+        rowMap k row ls = M.foldrWithKey (cellMap k) ls row
+        cellMap rn k cell ls = f (k, rn) cell : ls
+
+getAllRevealed :: Board -> [(Int, Int)]
+getAllRevealed bd = catMaybes $ mapShowBoard getReveal bd
+    where
+        getReveal (x, y) cell =
+            case cellState cell of
+                Revealed -> Just (x, y)
+                _ -> Nothing
+
 
 revealCell :: Int -> Int -> Board -> Board
 revealCell = updateCell Revealed
@@ -149,14 +165,49 @@ tryExpandComplete b@(Board (w, h) _ _ _) (x, y) =
         Neighbors cnt ->
             let cnt' = fromEnum cnt
                 nextFlags = foldl (\cnt'' cell -> if isFlagged cell then cnt'' + 1 else cnt'') 0 ns'
-                isBad = foldl (\mB cell -> mB || (isMine cell && not (isFlagged cell))) False ns'
-            in if cnt' /= nextFlags then Left b else if isBad then Right expanded else Left expanded
+        --        isBad = foldl (\mB cell -> mB || (isMine cell && not (isFlagged cell))) False ns'
+            in if cnt' /= nextFlags then Left b else expanded
     where
         showCell = getShowCell x y b
         ns = getNeighbors x y w h
         ns' = map (\(x',y') -> getShowCell x' y' b) ns
-        expanded = foldl expand b ns
-        expand b' (x', y') =
-            let cell = getShowCell x' y' b'
+        expanded = foldl expand (Left b) ns
+        expand bE (x', y') =
+            let cell = applyBd' (getShowCell x' y') bE
                 shouldReveal = not $ isFlagged cell
-            in if shouldReveal then revealCell x' y' b' else b'
+            in if shouldReveal then bindBd' (revealCellAction (x', y')) bE else bE
+        applyBd' :: (Board -> a) -> Either Board Board -> a
+        applyBd' f (Left bd) = f bd
+        applyBd' f (Right bd) = f bd
+        applyToBd' :: (Board -> Board) -> Either Board Board -> Either Board Board
+        applyToBd' f (Left bd) = Left $ f bd
+        applyToBd' f (Right bd) = Right $ f bd
+        bindBd' :: (Board -> Either Board Board) -> Either Board Board -> Either Board Board
+        bindBd' f (Left bd) = f bd
+        bindBd' f (Right bd) = case f bd of
+                                    Left bd' -> Right bd'
+                                    Right bd' -> Right bd'
+
+flagCellAction :: (Int, Int) -> Board -> Either Board Board
+flagCellAction (x, y) b = Left $ flagCell x y b
+
+-- Assumes valid position
+revealCellAction :: (Int, Int) -> Board -> Either Board Board
+revealCellAction (x, y) b@(Board _ _ g _) =
+    case getCell x y g of
+        Mine -> Right b'
+        Neighbors Zero -> Left $ revealAllNearZeros (x, y) b
+        Neighbors cnt -> Left b'
+    where
+        b' = revealCell x y b
+
+revealNumberNeighborsAction :: (Int, Int) -> Board -> Either Board Board
+revealNumberNeighborsAction = flip tryExpandComplete
+
+makeMove :: Move -> Board -> (String, Either Board Board)
+makeMove mv bd =
+    case mv of
+        PlaceFlag x y -> ("Placing flag", flagCellAction (x, y) bd)
+        RemoveFlag x y -> ("Removing flag", Left (hiddenCell x y bd))
+        RevealHidden x y -> ("Revealing cell", revealCellAction (x, y) bd)
+        RevealNum x y -> ("Reveal nearby", revealNumberNeighborsAction (x, y) bd)
