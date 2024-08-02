@@ -9,6 +9,11 @@ module Mines
     , generateBoard
     , checkWin
     , makeMove
+    , getAllRevealed
+    , getAllHidden
+    , getShowCell
+    , getCellState
+    , getNeighbors
     ) where
 
 import System.Random
@@ -103,6 +108,14 @@ getAllRevealed bd = catMaybes $ mapShowBoard getReveal bd
         getReveal (x, y) cell =
             case cellState cell of
                 Revealed -> Just (x, y)
+                _ -> Nothing
+
+getAllHidden :: Board -> [(Int, Int)]
+getAllHidden bd = catMaybes $ mapShowBoard getReveal bd
+    where
+        getReveal (x, y) cell =
+            case cellState cell of
+                Hidden -> Just (x, y)
                 _ -> Nothing
 
 

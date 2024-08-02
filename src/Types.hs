@@ -11,8 +11,11 @@ module Types
     , Move(..)
     , isZero
     , isFlagged
+    , isHidden
     , isMine
     ) where
+
+import System.Random
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -102,7 +105,8 @@ data GameMode = FlagMode | RevealMode
               deriving (Show, Eq)
 
 data Game = Game
-    { board :: Board
+    { rand :: StdGen
+    , board :: Board
     , mineCount :: Int
     , mode :: GameMode
     } deriving (Show, Eq)
@@ -112,8 +116,12 @@ isZero (Neighbors Zero) = True
 isZero _ = False
 
 isFlagged :: ShowCell -> Bool
-isFlagged (ShowCell _ (Flag)) = True
+isFlagged (ShowCell _ Flag) = True
 isFlagged _ = False
+
+isHidden :: ShowCell -> Bool
+isHidden (ShowCell _ Hidden) = True
+isHidden _ = False
 
 isMine :: ShowCell -> Bool
 isMine (ShowCell Mine _) = True
