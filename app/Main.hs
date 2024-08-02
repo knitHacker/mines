@@ -48,7 +48,7 @@ parseInput g@(Game r b c _) inputs
     | "exit" == inputs = putStrLn "Goodbye"
     | "F" == inputs = guessing (Game r b c FlagMode)
     | "X" == inputs = guessing (Game r b c RevealMode)
-    | "G" == inputs = aiGuess g
+    | "" == inputs = aiGuess g
     | otherwise = continue g "Input is either exit, F, X, or a coordinate in (x,y) format"
 
 continue :: Game -> String -> IO ()

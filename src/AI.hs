@@ -29,17 +29,19 @@ getAIMove r b
     | length hidden == 0 = error "No hidden cells to reveal. todo try to remove wrong flag?"
     | length cellInfos == 0 = ("Making a random guess: " ++ show mv, r', mv)
     | otherwise =
-        case (checkCanReveal b cellInfos, checkCanFlag b cellInfos, lastCheck) of
-            (Just move, _, _) -> ("Making safe reveal move: " ++ show move, r, move)
-            (Nothing, Just move, _) -> ("Making safe flag move: " ++ show move, r, move)
-            (Nothing, Nothing, Just move) -> ("Making hopefully safe reveal move: " ++ show move, r, move)
-            _ -> ("Making a random guess" ++ show mv, r', mv) -- educatedGuess b cellInfos
+        case (checkCanReveal b cellInfos, checkCanFlag b cellInfos, lastCheck, lastLastCheck) of
+            (Just move, _, _, _) -> ("Making safe reveal move: " ++ show move, r, move)
+            (Nothing, Just move, _, _) -> ("Making safe flag move: " ++ show move, r, move)
+            (Nothing, Nothing, Just move, _) -> ("Making hopefully safe reveal move: " ++ show move, r, move)
+            (Nothing, Nothing, Nothing, Just move) -> ("Making hopefully safe flag move: " ++ show move, r, move)
+            _ -> ("Making a random guess: " ++ show mv, r', mv) -- educatedGuess b cellInfos
     where
         (r', mv) = randomGuess r b
         cellInfos = getAllMoveInfo b
         hidden = getAllHidden b
         sets = getApproxCellInfo cellInfos
-        lastCheck = checkCanUseNeighbor b cellInfos sets
+        lastCheck = checkCanRevealWithNeighbor b cellInfos sets
+        lastLastCheck = checkCanFlagWithNeighbor b cellInfos sets
 
 getAllMoveInfo :: Board -> [InfoCell]
 getAllMoveInfo b = catMaybes $ getMoveInfo b <$> revealed
@@ -66,21 +68,21 @@ getMoveInfo b@(Board (w, h) _ g _) (x, y) =
 
 getApproxCellInfo :: [InfoCell] -> [(Int, S.Set (Int, Int))]
 getApproxCellInfo [] = []
-getApproxCellInfo ((InfoCell x y c hidden flags):tl)
+getApproxCellInfo ((InfoCell _ _ c hidden flags):tl)
     | lHid > 3 || lHid < 2 = getApproxCellInfo tl
-    | otherwise = trace (show ((x, y), n, hidden)) $ (n, hidden) : getApproxCellInfo tl
+    | otherwise = (n, hidden) : getApproxCellInfo tl
     where
         lHid = length hidden
         n = c - length flags
 
 
-checkCanUseNeighbor :: Board -> [InfoCell] -> [(Int, S.Set (Int, Int))] -> Maybe Move
-checkCanUseNeighbor _ [] _ = Nothing
-checkCanUseNeighbor b (i@(InfoCell _ _ c hidden flags):tl) nbInfo =
+checkCanRevealWithNeighbor :: Board -> [InfoCell] -> [(Int, S.Set (Int, Int))] -> Maybe Move
+checkCanRevealWithNeighbor _ [] _ = Nothing
+checkCanRevealWithNeighbor b (i@(InfoCell _ _ c hidden flags):tl) nbInfo =
     if length hidden == 0
-        then checkCanUseNeighbor b tl nbInfo
+        then checkCanRevealWithNeighbor b tl nbInfo
         else case foldr getSets Nothing nbInfo of
-                    Nothing -> checkCanUseNeighbor b tl nbInfo
+                    Nothing -> checkCanRevealWithNeighbor b tl nbInfo
                     mv -> mv
     where
         getSets _ j@(Just _) = j
@@ -88,14 +90,40 @@ checkCanUseNeighbor b (i@(InfoCell _ _ c hidden flags):tl) nbInfo =
             | not (set `S.isSubsetOf` hidden) = Nothing
             | ll == 0 = Nothing
             | c - n - f == 0 = rpt "Reveal cell" $ Just $ RevealHidden hx hy
-            | c - n - f == ll = rpt "Placing flag" $ Just $ PlaceFlag hx hy
-            | otherwise = trace (show (i, n, set, leftover))  Nothing
+            | otherwise = Nothing
             where
                 rpt msg = trace (show (i, n, set, leftover, msg))
                 leftover = S.difference hidden set
                 (hx, hy) = S.findMin leftover
                 f = length flags
                 ll = length leftover
+
+
+checkCanFlagWithNeighbor :: Board -> [InfoCell] -> [(Int, S.Set (Int, Int))] -> Maybe Move
+checkCanFlagWithNeighbor _ [] _ = Nothing
+checkCanFlagWithNeighbor b (i@(InfoCell _ _ c hidden flags):tl) nbInfo =
+    if length hidden == 0
+        then checkCanFlagWithNeighbor b tl nbInfo
+        else case foldr getSets Nothing nbInfo of
+                    Nothing -> checkCanFlagWithNeighbor b tl nbInfo
+                    mv -> mv
+    where
+        getSets _ j@(Just _) = j
+        getSets (n, set) _
+            -- only helpful if it conveys that there has to be fewer mines than cells in the set
+            | lo == 0 || lo <= n = Nothing
+            | ll == 0 = Nothing
+            | c - n - f == ll = rpt "Flag cell" $ Just $ PlaceFlag hx hy
+            | otherwise = Nothing
+            where
+                rpt msg = trace (show (i, n, set, overlap, leftover, msg))
+                overlap = S.intersection set hidden
+                leftover = S.difference hidden set
+                (hx, hy) = S.findMin leftover
+                f = length flags
+                ll = length leftover
+                lo = length overlap
+
 
 
 randomGuess :: RandomGen g => g -> Board -> (g, Move)
